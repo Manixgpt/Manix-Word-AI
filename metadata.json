@@ -1,0 +1,6 @@
+{
+  "name": "Manix Word",
+  "description": "Un traitement de texte complet inspiré de Microsoft Word avec édition de documents, création de fichiers DOCX, IA de correction d'orthographe et recherche internet en live.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

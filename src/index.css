@@ -1,0 +1,125 @@
+@import "tailwindcss";
+
+/* Microsoft Word Editor Custom Layout & Aesthetics */
+#word-content-area {
+  min-height: 1056px;
+  position: relative;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Base rich text components layout styling for MS Word compatibility */
+#word-content-area p {
+  margin-bottom: 0.75rem;
+  line-height: inherit;
+}
+
+#word-content-area ul {
+  list-style-type: disc !important;
+  padding-left: 1.5rem !important;
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+#word-content-area ol {
+  list-style-type: decimal !important;
+  padding-left: 1.5rem !important;
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+#word-content-area li {
+  margin-bottom: 0.25rem !important;
+}
+
+#word-content-area h1 {
+  font-size: 20pt;
+  font-weight: 700;
+  color: #2b579a;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+#word-content-area h2 {
+  font-size: 16pt;
+  font-weight: 600;
+  color: #475569;
+  margin-top: 1.25rem;
+  margin-bottom: 0.4rem;
+}
+
+#word-content-area h3 {
+  font-size: 13pt;
+  font-weight: 600;
+  color: #334155;
+  margin-top: 1rem;
+  margin-bottom: 0.3rem;
+}
+
+/* Beautiful Office Compatible Table Styles (visible borders) */
+#word-content-area table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  margin: 1rem 0 !important;
+  font-size: 10pt !important;
+}
+
+#word-content-area th, #word-content-area td {
+  border: 1px solid #cbd5e1 !important;
+  padding: 8px 12px !important;
+  min-width: 50px !important;
+  text-align: left !important;
+}
+
+#word-content-area th {
+  background-color: #f1f5f9 !important;
+  font-weight: 600 !important;
+  color: #1e293b !important;
+}
+
+/* Visual Saut de Page (Page Break) styling similar to Word */
+.word-page-break {
+  display: block !important;
+  height: 24px !important;
+  margin: 2rem calc(-1 * var(--sheet-padding, 4.5rem)) !important; /* expand outside standard card padding to visually cut paper sheet! */
+  background-color: #f3f2f1 !important; /* Matches center workspace screen background */
+  border-top: 1px dashed #c8c6c4 !important;
+  border-bottom: 1px dashed #c8c6c4 !important;
+  user-select: none !important;
+  pointer-events: none !important;
+  position: relative !important;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  #word-bg-paper, #word-bg-paper * {
+    visibility: visible;
+  }
+  
+  #word-bg-paper {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none !important;
+    max-width: 100%;
+    transform: none !important;
+  }
+
+  .word-page-break {
+    page-break-after: always;
+    break-after: page;
+    height: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    margin: 0 !important;
+  }
+
+  #file-menu-overlay, .mini-toolbar, .context-menu, header, nav, #app-navbar {
+    display: none !important;
+  }
+}

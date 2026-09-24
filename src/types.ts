@@ -61,8 +61,43 @@ export interface Template {
   title: string;
   description: string;
   thumbnail: string;
+  category?: string;
   content: string;
   style: DocumentStyle;
   headerText: string;
   footerText: string;
+}
+
+export interface GrammarIssue {
+  id: string;
+  original: string;
+  replacement: string;
+  type: 'grammaire' | 'orthographe' | 'accord' | 'conjugaison' | 'ponctuation' | 'style' | 'homophone';
+  explanation: string;
+  context?: string;
+  severity?: 'error' | 'warning' | 'suggestion';
+}
+
+export interface GrammarCheckResult {
+  success: boolean;
+  issues: GrammarIssue[];
+  issuesCount: number;
+  correctedHtml?: string;
+  analyzedAt: string;
+  isSimulated?: boolean;
+}
+
+export interface SynonymItem {
+  word: string;
+  category?: 'courant' | 'soutenu' | 'familier' | 'littéraire' | 'précis' | 'nuance';
+  definition?: string;
+  example?: string;
+}
+
+export interface SynonymResult {
+  success: boolean;
+  word: string;
+  synonyms: SynonymItem[];
+  antonyms?: string[];
+  expressions?: string[];
 }

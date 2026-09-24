@@ -2,13 +2,14 @@ import {
   ArrowLeft, Shield, CheckSquare, Settings, Share2, FileDown, LogOut, 
   User, Printer, Cpu, FileText as DocIcon, Award, RefreshCw, Layers, 
   Check, CheckSquare as CheckBx, FolderOpen, Save, Copy, Mail, HelpCircle, 
-  Key, Globe, Cloud, Palette, Command, Sliders, ExternalLink, ChevronDown
+  Key, Globe, Cloud, Palette, Command, Sliders, ExternalLink, ChevronDown,
+  Maximize2, Minimize2, Lock, Star, FileCheck, History, RotateCcw, AlertTriangle, Search
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { WordDocument } from '../types';
 import { exportToPdf } from '../utils/pdfExporter';
 import { jsPDF } from 'jspdf';
-import { Auth, signOut } from 'firebase/auth';
+import ManixWordLogo from './ManixWordLogo';
 
 interface FileMenuProps {
   document: WordDocument;
@@ -23,9 +24,9 @@ interface FileMenuProps {
   onImportLocalFile?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onSaveAs?: (newTitle: string) => void;
   onUpdateDocument?: (updates: Partial<WordDocument>) => void;
-  isFirebaseEnabled: boolean;
-  auth: Auth | null;
-  onSignOut: () => void;
+  isFullscreen?: boolean;
+  isDarkMode?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
 export default function FileMenu({
@@ -41,9 +42,9 @@ export default function FileMenu({
   onImportLocalFile,
   onSaveAs,
   onUpdateDocument,
-  isFirebaseEnabled,
-  auth,
-  onSignOut,
+  isFullscreen = false,
+  isDarkMode = false,
+  onToggleFullscreen,
 }: FileMenuProps) {
   // Navigation segments
   const [activeSegment, setActiveSegment] = useState<'info' | 'ouvrir' | 'save-as' | 'export' | 'partager' | 'compte' | 'options'>('info');
@@ -148,30 +149,37 @@ export default function FileMenu({
     URL.revokeObjectURL(url);
   };
 
-  // Modern window.print() client-side exporter instead of jsPDF for precise format matching
+  // High quality client-side A4 PDF exporter
   const handleDownloadPdf = () => {
     onClose(); // Hide the menu
-    setTimeout(() => {
-      window.print();
-    }, 300); // Allow time for DOM to render without overlay
+    if (onExportPdf) {
+      onExportPdf();
+    }
   };
 
   const sizeKb = Math.ceil(((doc.content?.length || 0) * 2) / 1024);
 
   return (
-    <div id="file-menu-overlay" className="fixed inset-0 bg-[#f3f2f1] z-50 flex font-sans select-none antialiased">
+    <div id="file-menu-overlay" className={`fixed inset-0 ${isDarkMode ? 'bg-[#0b0f19] text-slate-100' : 'bg-[#f3f2f1] text-gray-800'} z-50 flex font-sans select-none antialiased`}>
       {/* File Menu Left Sidebar */}
-      <div className="w-64 bg-[#2b579a] text-white flex flex-col p-4 flex-shrink-0 shadow-lg justify-between">
-        <div className="space-y-6">
-          {/* Back Button */}
-          <button
-            id="btn-back-to-editor"
-            onClick={onClose}
-            className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 transition cursor-pointer"
-            title="Retour au document"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
+      <div className={`w-64 ${isDarkMode ? 'bg-[#0f172a] border-r border-slate-800' : 'bg-[#2b579a]'} text-white flex flex-col p-4 flex-shrink-0 shadow-lg justify-between`}>
+        <div className="space-y-4">
+          {/* Back Button & Logo Header */}
+          <div className="flex items-center justify-between pb-2 border-b border-white/10">
+            <button
+              id="btn-back-to-editor"
+              onClick={onClose}
+              className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 transition cursor-pointer"
+              title="Retour au document"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <ManixWordLogo size="xs" showText={false} />
+          </div>
+
+          <div className="pb-1">
+            <ManixWordLogo size="sm" showText={true} textColor="text-white" />
+          </div>
 
           {/* Navigation Items */}
           <div className="space-y-1">
@@ -244,6 +252,20 @@ export default function FileMenu({
               <FileDown className="h-4 w-4 mr-1 text-blue-100" />
               <span>Exporter...</span>
             </button>
+            {onToggleFullscreen && (
+              <button
+                id="menu-fullscreen"
+                onClick={() => {
+                  onToggleFullscreen();
+                  onClose();
+                }}
+                className="w-full text-left py-2.5 px-4 rounded hover:bg-white/10 text-blue-100 hover:text-white transition text-sm flex items-center space-x-3 cursor-pointer"
+                title="Basculer en mode plein écran sans distraction"
+              >
+                {isFullscreen ? <Minimize2 className="h-4 w-4 mr-1 text-blue-100" /> : <Maximize2 className="h-4 w-4 mr-1 text-blue-100" />}
+                <span>{isFullscreen ? 'Quitter le Plein écran' : 'Mode Plein écran'}</span>
+              </button>
+            )}
             <button
               id="menu-close"
               onClick={onGoToTemplates}
@@ -281,7 +303,7 @@ export default function FileMenu({
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto bg-white p-12 text-gray-800">
+      <div className={`flex-1 overflow-y-auto ${isDarkMode ? 'bg-slate-900 text-slate-100' : 'bg-white text-gray-800'} p-12`}>
         
         {/* ======================================= */}
         {/* 1. INFORMATIONS SEGMENT */}
@@ -316,22 +338,26 @@ export default function FileMenu({
                     <div className="flex flex-wrap gap-2 mb-3">
                       {doc.isFinal && (
                         <span className="bg-amber-100 text-amber-800 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
-                          ⭐ Marqué comme final
+                          <Star className="w-3 h-3 text-amber-600 fill-amber-500" />
+                          <span>Marqué comme final</span>
                         </span>
                       )}
                       {doc.password && (
-                        <span className="bg-emerald-105 text-emerald-800 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs border border-emerald-300">
-                          🔑 Chiffré par mot de passe
+                        <span className="bg-emerald-100 text-emerald-800 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs border border-emerald-300">
+                          <Key className="w-3 h-3 text-emerald-700" />
+                          <span>Chiffré par mot de passe</span>
                         </span>
                       )}
                       {doc.isReadOnly && (
                         <span className="bg-red-50 text-red-700 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs border border-red-200">
-                          🔒 Lecture seule
+                          <Lock className="w-3 h-3 text-red-600" />
+                          <span>Lecture seule</span>
                         </span>
                       )}
                       {doc.signature && (
                         <span className="bg-blue-50 text-blue-700 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs border border-blue-250">
-                          📄 Signé numériquement
+                          <FileCheck className="w-3 h-3 text-blue-600" />
+                          <span>Signé numériquement</span>
                         </span>
                       )}
                     </div>
@@ -361,7 +387,7 @@ export default function FileMenu({
                           }}
                           className="dropdown-item w-full text-left px-4 py-3 hover:bg-slate-50 flex items-start space-x-3 transition cursor-pointer"
                         >
-                          <span className="text-xl">⭐</span>
+                          <Star className="w-5 h-5 text-amber-500 fill-amber-400 shrink-0 mt-0.5" />
                           <div>
                             <p className="font-semibold text-gray-900 text-xs text-[#2b579a]">Marquer comme final</p>
                             <p className="text-[10px] text-gray-500">Informer les lecteurs que le document est finalisé et décourager toute modification accidentelle.</p>
@@ -376,7 +402,7 @@ export default function FileMenu({
                           }}
                           className="dropdown-item w-full text-left px-4 py-3 hover:bg-slate-50 flex items-start space-x-3 transition cursor-pointer"
                         >
-                          <span className="text-xl">🔑</span>
+                          <Key className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                           <div>
                             <p className="font-semibold text-gray-900 text-xs text-[#2b579a]">Chiffrer avec mot de passe</p>
                             <p className="text-[10px] text-gray-500">Exiger un mot de passe de sécurité pour ouvrir de nouveau ce document de travail.</p>
@@ -394,7 +420,7 @@ export default function FileMenu({
                           }}
                           className="dropdown-item w-full text-left px-4 py-3 hover:bg-slate-50 flex items-start space-x-3 transition cursor-pointer"
                         >
-                          <span className="text-xl">🔒</span>
+                          <Lock className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
                           <div>
                             <p className="font-semibold text-gray-900 text-xs text-[#2b579a]">Restreindre la modification</p>
                             <p className="text-[10px] text-gray-500">Désactiver la saisie directe dans l'éditeur pour éviter d'altérer la mise en page.</p>
@@ -413,7 +439,7 @@ export default function FileMenu({
                           }}
                           className="dropdown-item w-full text-left px-4 py-3 hover:bg-slate-50 flex items-start space-x-3 transition cursor-pointer"
                         >
-                          <span className="text-xl">📃</span>
+                          <FileCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                           <div>
                             <p className="font-semibold text-gray-900 text-xs text-[#2b579a]">Ajouter une signature numérique</p>
                             <p className="text-[10px] text-gray-500">Ajouter une signature d'authenticité avec date et auteur rattachés.</p>
@@ -442,7 +468,8 @@ export default function FileMenu({
                     </p>
                     {inspectResults.checked && (
                       <div className="mb-3 text-[11px] text-blue-800 font-semibold bg-blue-100-accent p-2 rounded border border-blue-200 flex items-center gap-1.5">
-                        🔍 Inspecteur : {inspectResults.dataFound ? "Propriétés d'auteur détectées (" + authorName + ")" : "Aucune métadonnée personnelle trouvée."}
+                        <Search className="w-3.5 h-3.5 shrink-0 text-blue-600" />
+                        <span>Inspecteur : {inspectResults.dataFound ? "Propriétés d'auteur détectées (" + authorName + ")" : "Aucune métadonnée personnelle trouvée."}</span>
                       </div>
                     )}
                     <button
@@ -467,7 +494,7 @@ export default function FileMenu({
                           }}
                           className="dropdown-item w-full text-left px-4 py-3 hover:bg-slate-50 flex items-start space-x-3 transition cursor-pointer"
                         >
-                          <span className="text-xl">🔍</span>
+                          <Search className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                           <div>
                             <p className="font-semibold text-gray-900 text-xs text-[#2b579a]">Inspecter le document</p>
                             <p className="text-[10px] text-gray-500">Parcourir les notes masquées et supprimer les informations confidentielles rattachées.</p>
@@ -481,7 +508,7 @@ export default function FileMenu({
                           }}
                           className="dropdown-item w-full text-left px-4 py-3 hover:bg-slate-50 flex items-start space-x-3 transition cursor-pointer"
                         >
-                          <span className="text-xl">♿</span>
+                          <Award className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                           <div>
                             <p className="font-semibold text-gray-900 text-xs text-[#2b579a]">Vérifier l'accessibilité</p>
                             <p className="text-[10px] text-gray-500">S'assurer que le contenu du document est sémantiquement structuré pour les lecteurs d'écran.</p>
@@ -495,7 +522,7 @@ export default function FileMenu({
                           }}
                           className="dropdown-item w-full text-left px-4 py-3 hover:bg-slate-50 flex items-start space-x-3 transition cursor-pointer"
                         >
-                          <span className="text-xl">💾</span>
+                          <Save className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                           <div>
                             <p className="font-semibold text-gray-900 text-xs text-[#2b579a]">Vérifier la compatibilité</p>
                             <p className="text-[10px] text-gray-500 font-semibold">Parcourir les fonctionnalités indisponibles dans les versions antérieures (Word 97-2003).</p>
@@ -541,7 +568,7 @@ export default function FileMenu({
                           }}
                           className="dropdown-item w-full text-left px-4 py-3 hover:bg-slate-50 flex items-start space-x-3 transition cursor-pointer"
                         >
-                          <span className="text-xl">♻️</span>
+                          <RotateCcw className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                           <div>
                             <p className="font-semibold text-gray-900 text-xs text-[#2b579a]">Récupérer des documents non enregistrés</p>
                             <p className="text-[10px] text-gray-500">Afficher et charger les versions de sauvegarde automatique temporaires qui ont été fermées.</p>
@@ -555,7 +582,7 @@ export default function FileMenu({
                           }}
                           className="dropdown-item w-full text-left px-4 py-3 hover:bg-slate-50 flex items-start space-x-3 transition cursor-pointer"
                         >
-                          <span className="text-xl">⏳</span>
+                          <History className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                           <div>
                             <p className="font-semibold text-gray-900 text-xs text-[#2b579a]">Historique des versions</p>
                             <p className="text-[10px] text-gray-500">Consulter et basculer sur les versions d'historique de relecture précédentes.</p>
@@ -866,15 +893,6 @@ export default function FileMenu({
                     </span>
                   </div>
                 </div>
-                {isFirebaseEnabled && (
-                  <button
-                    onClick={onSignOut}
-                    className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-700 hover:bg-red-100 py-2 rounded-lg font-semibold transition cursor-pointer"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Déconnexion
-                  </button>
-                )}
               </div>
 
               {/* Statut du produit de licence */}
@@ -885,8 +903,8 @@ export default function FileMenu({
                 </h3>
 
                 <div className="flex items-start space-x-4">
-                  <div className="p-3 bg-blue-50 text-[#2b579a] rounded-lg">
-                    <Layers className="h-10 w-10 animate-pulse" />
+                  <div className="p-2 bg-blue-50 text-[#2b579a] rounded-lg shrink-0">
+                    <ManixWordLogo size={52} showText={false} />
                   </div>
                   <div className="space-y-1">
                     <h4 className="text-base font-bold text-gray-900">Microsoft Office Professionnel Plus 2026</h4>
@@ -1344,11 +1362,15 @@ export default function FileMenu({
         <div className="fixed inset-0 bg-black/50 z-55 flex items-center justify-center font-sans">
           <div className="bg-white rounded-lg p-6 w-96 shadow-2xl border border-gray-300 animate-fadeIn">
             <h3 className="text-sm font-bold text-gray-950 mb-3 flex items-center gap-1.5 border-b pb-2">
-              🔑 Chiffrer le document Word
+              <Key className="w-4 h-4 text-emerald-600" />
+              <span>Chiffrer le document Word</span>
             </h3>
             <p className="text-[11px] text-gray-600 mb-4 leading-relaxed">
               Le chiffrement du contenu de ce fichier protège l'accès en demandant un mot de passe obligatoire d'ouverture. 
-              <span className="block mt-1.5 font-bold text-amber-700">⚠️ Attention : Si vous perdez le mot de passe, il ne pourra pas être récupéré.</span>
+              <span className="flex items-center gap-1 mt-1.5 font-bold text-amber-700">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <span>Attention : Si vous perdez le mot de passe, il ne pourra pas être récupéré.</span>
+              </span>
             </p>
             <div className="space-y-3 mb-5">
               <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Mot de passe :</label>
@@ -1392,7 +1414,8 @@ export default function FileMenu({
         <div className="fixed inset-0 bg-black/50 z-55 flex items-center justify-center font-sans">
           <div className="bg-white rounded-lg p-6 w-[28rem] shadow-2xl border border-gray-300 animate-fadeIn text-xs">
             <h3 className="text-sm font-bold text-gray-950 mb-3 flex items-center gap-1.5 border-b pb-2">
-              🔍 Inspecteur de document Word
+              <Search className="w-4 h-4 text-blue-600" />
+              <span>Inspecteur de document Word</span>
             </h3>
             <p className="text-[11px] text-gray-500 mb-4 leading-relaxed">
               Parcourez et nettoyez les propriétés d'écriture, les notes masquées, et l'identité des auteurs pour distribuer votre fichier en toute conformité.
@@ -1468,7 +1491,8 @@ export default function FileMenu({
         <div className="fixed inset-0 bg-black/50 z-55 flex items-center justify-center font-sans">
           <div className="bg-white rounded-lg p-6 w-96 shadow-2xl border border-gray-300 animate-fadeIn text-xs text-gray-800">
             <h3 className="text-sm font-bold text-gray-950 mb-3 flex items-center gap-1.5 border-b pb-2">
-              ♿ Vérificateur d'accessibilité Office
+              <Award className="w-4 h-4 text-emerald-600" />
+              <span>Vérificateur d'accessibilité Office</span>
             </h3>
             <div className="space-y-3 mb-5 leading-relaxed text-[11px] text-gray-650">
               <p>Le vérificateur analyse le document pour s'assurer que les personnes souffrant d'un handicap peuvent lire et consulter vos livrables professionnels sans barrière.</p>
@@ -1494,7 +1518,8 @@ export default function FileMenu({
         <div className="fixed inset-0 bg-black/50 z-55 flex items-center justify-center font-sans">
           <div className="bg-white rounded-lg p-6 w-96 shadow-2xl border border-gray-300 animate-fadeIn text-xs text-gray-800">
             <h3 className="text-sm font-bold text-gray-950 mb-3 flex items-center gap-1.5 border-b pb-2">
-              💾 Vérificateur de compatibilité Word
+              <Save className="w-4 h-4 text-blue-600" />
+              <span>Vérificateur de compatibilité Word</span>
             </h3>
             <div className="space-y-3 mb-5 leading-relaxed text-[11px] text-gray-650">
               <p>Recherchez des mises en forme spéciales non prises en charge lors de l'ouverture du texte dans des versions antérieures de Microsoft Word.</p>
@@ -1520,7 +1545,8 @@ export default function FileMenu({
         <div className="fixed inset-0 bg-black/50 z-55 flex items-center justify-center font-sans">
           <div className="bg-white rounded-lg p-6 w-[34rem] shadow-2xl border border-gray-300 animate-fadeIn text-xs text-gray-800">
             <h3 className="text-sm font-bold text-gray-950 mb-1 flex items-center gap-1.5">
-              ♻️ Récupérer des documents Word non enregistrés
+              <RotateCcw className="w-4 h-4 text-emerald-600" />
+              <span>Récupérer des documents Word non enregistrés</span>
             </h3>
             <p className="text-[11px] text-gray-500 mb-4 border-b pb-2 leading-relaxed font-light">
               ManixGPT a identifié des coupures ou des brouillons rédigés automatiquement sauvegardés en local. Sélectionnez une trace temporaire pour restaurer son contenu sémantique.

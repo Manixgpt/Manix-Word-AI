@@ -28,8 +28,17 @@ export function exportToPdf(docData: WordDocument): void {
     // Selecting all block-level elements
     const elements = tempDiv.querySelectorAll('p, h1, h2, h3, h4, h5, li, tr, blockquote, div');
 
+    const sanitize = (str: string) => {
+      return str
+        .replace(/[\u2018\u2019\u02BC]/g, "'")
+        .replace(/[\u201C\u201D\u00AB\u00BB]/g, '"')
+        .replace(/[\u2013\u2014]/g, '-')
+        .replace(/[\u00A0\u202F]/g, ' ')
+        .replace(/[\u2026]/g, '...');
+    };
+
     if (elements.length === 0) {
-      const text = tempDiv.innerText || tempDiv.textContent || '';
+      const text = sanitize(tempDiv.innerText || tempDiv.textContent || '');
       textLines.push(...text.split('\n'));
     } else {
       elements.forEach((el) => {
@@ -40,7 +49,8 @@ export function exportToPdf(docData: WordDocument): void {
           return;
         }
 
-        const text = el.textContent?.trim() || '';
+        const rawText = el.textContent?.trim() || '';
+        const text = sanitize(rawText);
         if (!text && tagName !== 'tr') return;
 
         if (tagName === 'h1') {
@@ -50,7 +60,7 @@ export function exportToPdf(docData: WordDocument): void {
         } else if (tagName === 'li') {
           textLines.push(`LIST_ITEM: ${text}`);
         } else if (tagName === 'tr') {
-          const cells = Array.from(el.querySelectorAll('td, th')).map(c => c.textContent?.trim() || '');
+          const cells = Array.from(el.querySelectorAll('td, th')).map(c => sanitize(c.textContent?.trim() || ''));
           if (cells.length > 0) {
             textLines.push(`TABLE: | ${cells.join(' | ')} |`);
           }
@@ -178,6 +188,16 @@ export function exportToPdf(docData: WordDocument): void {
 
     const cleanName = title.trim().replace(/\.docx$/i, '').replace(/\.pdf$/i, '') + '.pdf';
     docPdf.save(cleanName);
+
+    // Show temporary visual feedback
+    const toast = document.createElement('div');
+    toast.textContent = `Document PDF exporté avec succès : ${cleanName}`;
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#f8fafc;padding:10px 20px;border-radius:9999px;font-size:12px;font-weight:600;box-shadow:0 10px 25px rgba(0,0,0,0.3);z-index:99999;transition:opacity 0.3s;';
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 300);
+    }, 2500);
   } catch (err: any) {
     console.error("PDF Export error:", err);
     alert('Erreur lors du téléchargement PDF : ' + err.message);

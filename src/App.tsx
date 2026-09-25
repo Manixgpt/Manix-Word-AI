@@ -132,12 +132,15 @@ export default function App() {
     currentStep: 0,
   });
 
-  // Keyboard Event Listener for Ctrl+K / Cmd+K
+  // Keyboard Event Listener for Ctrl+K / Cmd+K and Ctrl+J (Toggle ManixGPT)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setIsCommandPaletteOpen((prev) => !prev);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        setIsAiAssistantOpen((prev) => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -1263,6 +1266,8 @@ export default function App() {
               onOpenRagSearch={() => setIsRagSearchOpen(true)}
               onOpenAutonomousAgent={() => setIsAutonomousAgentOpen(true)}
               onOpenDocumentStructure={() => setIsDocumentStructureOpen(true)}
+              isAiAssistantOpen={isAiAssistantOpen}
+              onToggleAiAssistant={() => setIsAiAssistantOpen(prev => !prev)}
             />
           )}
 
@@ -1427,7 +1432,21 @@ export default function App() {
                 panelMode={aiPanelMode}
                 onChangePanelMode={setAiPanelMode}
                 accentColor={accentColor}
+                onClose={() => setIsAiAssistantOpen(false)}
               />
+            )}
+
+            {/* Floating Reopen Button when ManixGPT is hidden */}
+            {!isAiAssistantOpen && (
+              <button
+                onClick={() => setIsAiAssistantOpen(true)}
+                className="fixed bottom-10 right-6 z-40 px-3.5 py-2 rounded-full shadow-2xl flex items-center space-x-2 text-xs font-bold text-white transition-all transform hover:scale-105 cursor-pointer border border-white/20 animate-fade-in group"
+                style={{ backgroundColor: accentColor }}
+                title="Faire réapparaître ManixGPT (Raccourci: Ctrl+J)"
+              >
+                <Sparkles className="w-4 h-4 text-amber-300 group-hover:rotate-12 transition-transform" />
+                <span>Afficher ManixGPT</span>
+              </button>
             )}
           </div>
 
@@ -1439,6 +1458,21 @@ export default function App() {
               </span>
               <span id="stat-words">{wordCount} mots</span>
               <span id="stat-chars">{charCount} caractères</span>
+              <span className={isDarkMode ? 'text-slate-700' : 'text-gray-400'}>|</span>
+
+              {/* ManixGPT Visibility Toggle in Status Bar */}
+              <button
+                onClick={() => setIsAiAssistantOpen((prev) => !prev)}
+                className={`flex items-center space-x-1 px-1.5 py-0.5 rounded cursor-pointer transition ${
+                  isAiAssistantOpen
+                    ? isDarkMode ? 'text-blue-400 hover:bg-slate-800' : 'text-blue-700 hover:bg-gray-200'
+                    : isDarkMode ? 'text-slate-500 hover:bg-slate-800' : 'text-slate-500 hover:bg-gray-200'
+                }`}
+                title={isAiAssistantOpen ? "Masquer le volet ManixGPT (Ctrl+J)" : "Faire réapparaître ManixGPT (Ctrl+J)"}
+              >
+                <Sparkles className={`w-3 h-3 ${isAiAssistantOpen ? 'text-amber-400' : 'text-slate-400'}`} />
+                <span>ManixGPT : {isAiAssistantOpen ? 'Affiché' : 'Masqué (Cliquer pour ouvrir)'}</span>
+              </button>
               <span className={isDarkMode ? 'text-slate-700' : 'text-gray-400'}>|</span>
               
               {/* Interactive Grammar Status Button */}
@@ -1801,6 +1835,9 @@ export default function App() {
           else if (actionId === 'open_grammar') {
             setIsGrammarPanelOpen(true);
             if (activeDoc) triggerGrammarCheck(activeDoc.content);
+          }
+          else if (actionId === 'toggle_ai_assistant') {
+            setIsAiAssistantOpen((prev) => !prev);
           }
         }}
         recentDocs={recentDocs}

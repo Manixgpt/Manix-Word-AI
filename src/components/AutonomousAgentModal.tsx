@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Bot, Sparkles, X, Check, Loader, Play, CheckCircle2, AlertCircle, ArrowRight, ShieldCheck, Terminal, Layers } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Bot, X, Check, Loader, Play, CheckCircle2, ShieldCheck, Terminal, LogOut } from 'lucide-react';
 import { WordDocument } from '../types';
 
 interface AutonomousAgentModalProps {
@@ -30,14 +30,26 @@ export default function AutonomousAgentModal({
 }: AutonomousAgentModalProps) {
   const [taskInstruction, setTaskInstruction] = useState('');
   const [isRunning, setIsRunning] = useState(false);
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [, setCurrentStepIndex] = useState(0);
   const [reactSteps, setReactSteps] = useState<ReActStep[]>([]);
   const [finalGeneratedContent, setFinalGeneratedContent] = useState<string | null>(null);
 
+  // Close with Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const sampleTasks = [
     'Vérifie que les chiffres du chapitre 1 correspondent au tableau du chapitre 2 et uniformise les devises en EUR',
-    'Analyse tout le document, corrige la voix passive et reformate la page de garde aux normes officielles',
-    'Extrais les 5 points clés essentiels, génère un résumé exécutif au début et harmonise la hiérarchie des titres',
+    'Corrige la voix passive et reformate la page de garde aux normes officielles',
+    'Extrais les points clés, génère un résumé exécutif et harmonise les titres',
   ];
 
   const handleStartAgent = async (instructionToRun?: string) => {
@@ -65,8 +77,8 @@ export default function AutonomousAgentModal({
       },
       {
         stepNumber: 3,
-        title: 'Auto-Correction de Syntax & Validation HTML (Self-Correction Loop)',
-        thought: 'Vérification de la conformité des balises HTML, styles inline, tables et lisibilité...',
+        title: 'Auto-Correction de Syntaxe & Validation HTML',
+        thought: 'Vérification de la conformité des balises HTML, styles inline et lisibilité...',
         action: 'VERIFY_HTML_MARKUP',
         status: 'pending',
       },
@@ -79,9 +91,9 @@ export default function AutonomousAgentModal({
     initialSteps[0].status = 'running';
     setReactSteps([...initialSteps]);
 
-    await new Promise((r) => setTimeout(r, 800));
+    await new Promise((r) => setTimeout(r, 600));
     initialSteps[0].status = 'completed';
-    initialSteps[0].outputLog = 'Structure identifiée : 3 Titres, 12 Paragraphes, 1 Tableau HTML.';
+    initialSteps[0].outputLog = 'Structure identifiée : Titres, Paragraphes, Tableaux analysés.';
     initialSteps[1].status = 'running';
     setReactSteps([...initialSteps]);
     setCurrentStepIndex(1);
@@ -106,7 +118,7 @@ export default function AutonomousAgentModal({
       setReactSteps([...initialSteps]);
       setCurrentStepIndex(2);
 
-      await new Promise((r) => setTimeout(r, 600));
+      await new Promise((r) => setTimeout(r, 500));
 
       // Step 3: Self-Correction Loop
       initialSteps[2].status = 'verified';
@@ -127,66 +139,78 @@ export default function AutonomousAgentModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in"
+    >
       <div
-        className={`w-full max-w-2xl rounded-3xl shadow-2xl border p-6 font-sans overflow-hidden transition-all ${
+        className={`w-full max-w-lg rounded-2xl shadow-2xl border flex flex-col max-h-[85vh] font-sans overflow-hidden transition-all ${
           isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
         }`}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center space-x-3">
+        {/* Header with Prominent Exit Button */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/80 shrink-0">
+          <div className="flex items-center space-x-2.5">
             <div
-              className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-md"
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-xs"
               style={{ backgroundColor: accentColor }}
             >
-              <Bot className="w-5 h-5" />
+              <Bot className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-bold">Agent Autonome Manix-ReAct</h3>
-              <p className="text-xs text-slate-500">Exécution autonome d'instructions complexes avec boucle d'auto-correction</p>
+              <h3 className="text-sm font-bold leading-tight">Agent Autonome ReAct</h3>
+              <p className="text-[11px] text-slate-500">Planification, exécution et auto-correction</p>
             </div>
           </div>
+
+          {/* Top Quitter button */}
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200 dark:border-slate-700 transition cursor-pointer"
+            title="Quitter l'interface de l'agent (Échap)"
           >
-            <X className="w-5 h-5" />
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Quitter</span>
           </button>
         </div>
 
-        {/* Input Task */}
-        <div className="py-4 space-y-3">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Mission Complexe de l'Agent :
-          </label>
-          <div className="flex space-x-2">
-            <input
-              type="text"
-              value={taskInstruction}
-              onChange={(e) => setTaskInstruction(e.target.value)}
-              placeholder="Ex: Vérifie que les chiffres du chapitre 1 correspondent au tableau du chapitre 2..."
-              className={`flex-1 px-4 py-2.5 rounded-2xl border text-xs font-medium focus:outline-none focus:ring-2 ${
-                isDarkMode
-                  ? 'bg-slate-950 border-slate-800 text-white focus:ring-blue-500'
-                  : 'bg-slate-50 border-slate-300 text-slate-900 focus:ring-blue-500'
-              }`}
-            />
-            <button
-              onClick={() => handleStartAgent()}
-              disabled={isRunning || !taskInstruction.trim()}
-              className="px-5 py-2.5 rounded-2xl text-xs font-bold text-white shadow-md flex items-center space-x-1.5 transition cursor-pointer hover:opacity-90"
-              style={{ backgroundColor: accentColor }}
-            >
-              {isRunning ? <Loader className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
-              <span>Lancer l'Agent</span>
-            </button>
-          </div>
+        {/* Scrollable Body */}
+        <div className="p-4 overflow-y-auto space-y-3.5 text-xs">
+          {/* Mission input */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Mission de l'Agent :
+            </label>
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                value={taskInstruction}
+                onChange={(e) => setTaskInstruction(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleStartAgent();
+                }}
+                placeholder="Ex: Vérifie que les chiffres du chapitre 1 correspondent au tableau..."
+                className={`flex-1 px-3 py-2 rounded-xl border text-xs font-medium focus:outline-none focus:ring-2 ${
+                  isDarkMode
+                    ? 'bg-slate-950 border-slate-800 text-white focus:ring-blue-500'
+                    : 'bg-slate-50 border-slate-300 text-slate-900 focus:ring-blue-500'
+                }`}
+              />
+              <button
+                onClick={() => handleStartAgent()}
+                disabled={isRunning || !taskInstruction.trim()}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold text-white shadow-xs flex items-center space-x-1.5 transition cursor-pointer hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: accentColor }}
+              >
+                {isRunning ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                <span>Lancer</span>
+              </button>
+            </div>
 
-          {/* Preset Prompts */}
-          <div className="space-y-1">
-            <span className="text-[11px] font-semibold text-slate-400">Exemples de missions ReAct :</span>
-            <div className="flex flex-wrap gap-1.5">
+            {/* Quick sample prompts */}
+            <div className="pt-1 flex flex-wrap gap-1">
               {sampleTasks.map((t) => (
                 <button
                   key={t}
@@ -194,10 +218,10 @@ export default function AutonomousAgentModal({
                     setTaskInstruction(t);
                     handleStartAgent(t);
                   }}
-                  className={`text-[10px] px-2.5 py-1 rounded-xl border transition text-left truncate max-w-full cursor-pointer ${
+                  className={`text-[10px] px-2 py-0.5 rounded-lg border transition text-left cursor-pointer truncate max-w-full ${
                     isDarkMode
                       ? 'border-slate-800 hover:bg-slate-800 text-slate-300'
-                      : 'border-slate-200 hover:bg-slate-100 text-slate-700'
+                      : 'border-slate-200 hover:bg-slate-100 text-slate-600'
                   }`}
                 >
                   {t}
@@ -205,90 +229,89 @@ export default function AutonomousAgentModal({
               ))}
             </div>
           </div>
-        </div>
 
-        {/* ReAct Step Execution Log */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-400">
-            <span className="flex items-center space-x-1">
-              <Terminal className="w-3.5 h-3.5" />
-              <span>Journal de raisonnement ReAct</span>
-            </span>
-            {reactSteps.some((s) => s.status === 'verified') && (
-              <span className="text-emerald-500 flex items-center space-x-1">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Auto-Correction Validée</span>
+          {/* ReAct Step Execution Log */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-400">
+              <span className="flex items-center space-x-1">
+                <Terminal className="w-3 h-3" />
+                <span>Journal ReAct</span>
               </span>
-            )}
-          </div>
+              {reactSteps.some((s) => s.status === 'verified') && (
+                <span className="text-emerald-500 flex items-center space-x-1 font-semibold">
+                  <ShieldCheck className="w-3 h-3" />
+                  <span>Auto-Correction OK</span>
+                </span>
+              )}
+            </div>
 
-          <div
-            className={`p-4 rounded-2xl border space-y-3 min-h-[160px] max-h-[220px] overflow-y-auto text-xs ${
-              isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
-            }`}
-          >
-            {reactSteps.length === 0 ? (
-              <div className="py-10 text-center text-slate-400 text-xs">
-                Définissez une mission pour voir l'agent planifier, exécuter et auto-corriger le document.
-              </div>
-            ) : (
-              reactSteps.map((step) => (
-                <div key={step.stepNumber} className="flex items-start space-x-3 text-xs">
-                  <div className="mt-0.5">
-                    {step.status === 'running' && <Loader className="w-4 h-4 text-blue-500 animate-spin" />}
-                    {step.status === 'completed' && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
-                    {step.status === 'verified' && <ShieldCheck className="w-4 h-4 text-purple-500" />}
-                    {step.status === 'pending' && <div className="w-4 h-4 rounded-full border-2 border-slate-400" />}
-                  </div>
-
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center justify-between font-bold text-slate-800 dark:text-slate-200">
-                      <span>
-                        Étape {step.stepNumber} : {step.title}
-                      </span>
-                      <span className="text-[10px] uppercase tracking-wider text-slate-400">{step.status}</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 italic">{step.thought}</p>
-                    {step.outputLog && (
-                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono bg-emerald-50 dark:bg-emerald-950/40 p-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                        {step.outputLog}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <span className="text-[11px] text-slate-400">ReAct Pattern Loop : Thought -&gt; Action -&gt; Self-Verification</span>
-
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={onClose}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                isDarkMode ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            <div
+              className={`p-3 rounded-xl border space-y-2.5 min-h-[120px] max-h-[180px] overflow-y-auto text-[11px] ${
+                isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
               }`}
             >
-              Fermer
-            </button>
+              {reactSteps.length === 0 ? (
+                <div className="py-8 text-center text-slate-400 text-xs">
+                  Entrez une consigne ci-dessus pour lancer la boucle ReAct de l'agent.
+                </div>
+              ) : (
+                reactSteps.map((step) => (
+                  <div key={step.stepNumber} className="flex items-start space-x-2.5">
+                    <div className="mt-0.5 shrink-0">
+                      {step.status === 'running' && <Loader className="w-3.5 h-3.5 text-blue-500 animate-spin" />}
+                      {step.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+                      {step.status === 'verified' && <ShieldCheck className="w-3.5 h-3.5 text-purple-500" />}
+                      {step.status === 'pending' && <div className="w-3.5 h-3.5 rounded-full border border-slate-400" />}
+                    </div>
 
-            {finalGeneratedContent && (
-              <button
-                onClick={() => {
-                  onApplyAgentDocumentChange(finalGeneratedContent);
-                  onClose();
-                }}
-                className="px-5 py-2 rounded-xl text-xs font-bold text-white shadow-md flex items-center space-x-1.5 transition cursor-pointer"
-                style={{ backgroundColor: accentColor }}
-              >
-                <Check className="w-4 h-4" />
-                <span>Appliquer les modifications validées</span>
-              </button>
-            )}
+                    <div className="flex-1 space-y-0.5">
+                      <div className="flex items-center justify-between font-bold">
+                        <span>
+                          Étape {step.stepNumber} : {step.title}
+                        </span>
+                        <span className="text-[9px] uppercase tracking-wider text-slate-400">{step.status}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 italic">{step.thought}</p>
+                      {step.outputLog && (
+                        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded border border-emerald-200 dark:border-emerald-800">
+                          {step.outputLog}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
+        </div>
+
+        {/* Footer with Quitter and Apply buttons */}
+        <div className="px-4 py-2.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 flex items-center justify-between shrink-0">
+          <button
+            onClick={onClose}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer flex items-center space-x-1.5 ${
+              isDarkMode
+                ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>Quitter l'Agent</span>
+          </button>
+
+          {finalGeneratedContent && (
+            <button
+              onClick={() => {
+                onApplyAgentDocumentChange(finalGeneratedContent);
+                onClose();
+              }}
+              className="px-4 py-1.5 rounded-xl text-xs font-bold text-white shadow-xs flex items-center space-x-1.5 transition cursor-pointer hover:opacity-95"
+              style={{ backgroundColor: accentColor }}
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>Appliquer les modifications</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

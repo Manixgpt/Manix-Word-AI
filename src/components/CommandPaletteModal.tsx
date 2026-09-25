@@ -117,6 +117,18 @@ export default function CommandPaletteModal({
         onClose();
       },
     },
+    {
+      id: 'toggle_ai_panel',
+      title: 'Afficher / Masquer ManixGPT',
+      subtitle: 'Basculer la visibilité du volet IA latéral (Ctrl+J)',
+      category: 'ai',
+      icon: Sparkles,
+      badge: 'Ctrl+J',
+      action: () => {
+        onTriggerRibbonAction?.('toggle_ai_assistant');
+        onClose();
+      },
+    },
     // AI commands
     {
       id: 'ai_reformat',

@@ -1,205 +1,177 @@
 import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import { WordDocument } from '../types';
 
 /**
- * Parses and generates a real, high-quality styled A4 PDF document from the rich text editor's content on the client-side.
+ * High-Fidelity PDF Exporter for Manix Word.
+ * Preserves 100% of formatting: colors, inline styles, tables, borders, font sizes, headings, images and layout.
  */
-export function exportToPdf(docData: WordDocument): void {
+export async function exportToPdf(docData: WordDocument): Promise<void> {
+  const content = docData.content || '';
+  const title = docData.title || 'Document';
+  const cleanName = title.trim().replace(/\.docx$/i, '').replace(/\.pdf$/i, '') + '.pdf';
+
+  // Show starting toast
+  const toast = document.createElement('div');
+  toast.id = 'manix-pdf-export-toast';
+  toast.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;">
+      <svg style="animation:spin 1s linear infinite;width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+        <path d="M12 2a10 10 0 0 1 10 10"></path>
+      </svg>
+      <span>Exportation PDF haute fidélité (mise en page, couleurs, tableaux)...</span>
+    </div>
+  `;
+  toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#f8fafc;padding:12px 22px;border-radius:9999px;font-size:12px;font-weight:600;box-shadow:0 10px 25px rgba(0,0,0,0.35);z-index:99999;transition:all 0.3s;font-family:sans-serif;';
+  document.body.appendChild(toast);
+
   try {
+    // Check if the document has explicit page break divisions
+    const pageBreakRegex = /<div[^>]*class=["'][^"']*word-page-break[^"']*["'][^>]*>[\s\S]*?<\/div>|<div[^>]*data-page-break=["']true["'][^>]*>[\s\S]*?<\/div>/gi;
+    let sections = content.split(pageBreakRegex).map(s => s.trim()).filter(Boolean);
+    if (sections.length === 0) {
+      sections = [content];
+    }
+
     const docPdf = new jsPDF({
       orientation: 'portrait',
       unit: 'pt',
-      format: 'a4'
+      format: 'a4',
+      compress: true
     });
 
-    const content = docData.content || "";
-    const title = docData.title || "Document";
+    // Standard A4 dimensions in pt
+    const pdfPageWidth = 595.28;
+    const pdfPageHeight = 841.89;
+    
+    // Pixel container width corresponding to A4 printable area (96 DPI standard)
+    const renderWidthPx = 794;
+    const standardPageHeightPx = Math.round(renderWidthPx * (pdfPageHeight / pdfPageWidth)); // ~1123px
 
-    // Standard A4 dimensions in pt: 595.28 x 841.89
-    const pageWidth = 595.28;
-    const pageHeight = 841.89;
-    const marginX = 54; // A standard 0.75-inch/54pt margin
-    const maxLineWidth = pageWidth - marginX * 2;
+    let isFirstPdfPage = true;
 
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = content;
+    // Process each section (explicit page or continuous)
+    for (let secIdx = 0; secIdx < sections.length; secIdx++) {
+      const sectionHtml = sections[secIdx];
 
-    const textLines: string[] = [];
-    // Selecting all block-level elements
-    const elements = tempDiv.querySelectorAll('p, h1, h2, h3, h4, h5, li, tr, blockquote, div');
+      // Create isolated rendering container
+      const container = document.createElement('div');
+      container.style.cssText = `
+        position: fixed;
+        left: -9999px;
+        top: 0;
+        width: ${renderWidthPx}px;
+        min-height: ${standardPageHeightPx}px;
+        background-color: #ffffff;
+        color: #1e293b;
+        font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+        font-size: 11pt;
+        line-height: 1.6;
+        padding: 50px 54px;
+        box-sizing: border-box;
+        z-index: -9999;
+      `;
 
-    const sanitize = (str: string) => {
-      return str
-        .replace(/[\u2018\u2019\u02BC]/g, "'")
-        .replace(/[\u201C\u201D\u00AB\u00BB]/g, '"')
-        .replace(/[\u2013\u2014]/g, '-')
-        .replace(/[\u00A0\u202F]/g, ' ')
-        .replace(/[\u2026]/g, '...');
-    };
+      // Apply Word-like typography & preserved table rules
+      const styles = `
+        <style>
+          * { box-sizing: border-box; }
+          body, div, p, span { font-family: Calibri, 'Segoe UI', Arial, sans-serif; }
+          h1 { font-size: 22pt; color: #1e3a8a; margin: 18px 0 10px 0; font-weight: bold; line-height: 1.25; }
+          h2 { font-size: 16pt; color: #2b579a; margin: 16px 0 8px 0; font-weight: bold; line-height: 1.3; }
+          h3 { font-size: 13pt; color: #334155; margin: 14px 0 6px 0; font-weight: bold; line-height: 1.35; }
+          h4, h5, h6 { font-size: 11pt; color: #475569; margin: 10px 0 4px 0; font-weight: bold; }
+          p { margin: 0 0 10px 0; font-size: 11pt; color: inherit; }
+          ul, ol { margin: 8px 0 12px 0; padding-left: 24px; }
+          li { margin-bottom: 4px; }
+          table { width: 100% !important; border-collapse: collapse !important; margin: 14px 0 !important; font-size: 10pt !important; page-break-inside: auto; }
+          th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
+          th { background-color: #2b579a; color: #ffffff; font-weight: bold; }
+          blockquote { border-left: 4px solid #2b579a; padding: 8px 16px; margin: 12px 0; background: #f8fafc; color: #475569; font-style: italic; }
+          img { max-width: 100%; height: auto; }
+          .word-page-break { display: none; }
+        </style>
+      `;
 
-    if (elements.length === 0) {
-      const text = sanitize(tempDiv.innerText || tempDiv.textContent || '');
-      textLines.push(...text.split('\n'));
-    } else {
-      elements.forEach((el) => {
-        const tagName = el.tagName.toLowerCase();
-        
-        // Skip divs that contain other visual tags to prevent duplicate texts
-        if (tagName === 'div' && el.querySelector('p, h1, h2, h3, h4, h5, li, tr, blockquote')) {
-          return;
-        }
+      container.innerHTML = styles + sectionHtml;
+      document.body.appendChild(container);
 
-        const rawText = el.textContent?.trim() || '';
-        const text = sanitize(rawText);
-        if (!text && tagName !== 'tr') return;
-
-        if (tagName === 'h1') {
-          textLines.push(`TITLE: ${text}`);
-        } else if (tagName === 'h2' || tagName === 'h3' || tagName === 'h4' || tagName === 'h5') {
-          textLines.push(`SUBTITLE: ${text}`);
-        } else if (tagName === 'li') {
-          textLines.push(`LIST_ITEM: ${text}`);
-        } else if (tagName === 'tr') {
-          const cells = Array.from(el.querySelectorAll('td, th')).map(c => sanitize(c.textContent?.trim() || ''));
-          if (cells.length > 0) {
-            textLines.push(`TABLE: | ${cells.join(' | ')} |`);
-          }
-        } else if (tagName === 'blockquote') {
-          textLines.push(`QUOTE: ${text}`);
-        } else {
-          // Avoid duplicating li element text inside parent UL
-          if (el.parentElement?.tagName.toLowerCase() === 'li') return;
-          textLines.push(text);
-        }
+      // Render high-res canvas via html2canvas (scale: 2 for crisp text and sharp lines)
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: renderWidthPx,
       });
+
+      // Remove container after rendering
+      container.remove();
+
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+      const pageCanvasHeight = Math.round(canvasWidth * (pdfPageHeight / pdfPageWidth));
+
+      // Calculate how many A4 pages this section spans
+      const totalPagesForSection = Math.max(1, Math.ceil(canvasHeight / pageCanvasHeight));
+
+      for (let pageNum = 0; pageNum < totalPagesForSection; pageNum++) {
+        const sourceY = pageNum * pageCanvasHeight;
+        const currentSliceHeight = Math.min(pageCanvasHeight, canvasHeight - sourceY);
+
+        // Create slice canvas
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = canvasWidth;
+        sliceCanvas.height = pageCanvasHeight;
+        const ctx = sliceCanvas.getContext('2d');
+
+        if (ctx) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvasWidth, pageCanvasHeight);
+          ctx.drawImage(
+            canvas,
+            0, sourceY, canvasWidth, currentSliceHeight,
+            0, 0, canvasWidth, currentSliceHeight
+          );
+        }
+
+        const imgData = sliceCanvas.toDataURL('image/jpeg', 0.95);
+
+        if (!isFirstPdfPage) {
+          docPdf.addPage();
+        } else {
+          isFirstPdfPage = false;
+        }
+
+        docPdf.addImage(imgData, 'JPEG', 0, 0, pdfPageWidth, pdfPageHeight);
+      }
     }
 
-    let y = 70;
-
-    // Helper to draw clean corporate headers
-    const drawHeader = () => {
-      // Background Accent (very subtle top bar)
-      docPdf.setFillColor(43, 87, 154); // Microsoft Word Blue (#2b579a)
-      docPdf.rect(marginX, 25, maxLineWidth, 2, 'F');
-
-      // Title header
-      docPdf.setFont('Helvetica', 'bold');
-      docPdf.setFontSize(8.5);
-      docPdf.setTextColor(100, 116, 139); // slate-500
-      
-      const headerTitle = title.toUpperCase().replace(/\.DOCX$/i, '').substring(0, 50);
-      docPdf.text(headerTitle, marginX, 39);
-
-      // Accent right-aligned subtitle
-      docPdf.setFont('Helvetica', 'normal');
-      docPdf.setTextColor(148, 163, 184); // slate-400
-      docPdf.text("MANIXGPT OFFICE EXPORT", pageWidth - marginX - 110, 39);
-    };
-
-    drawHeader();
-
-    textLines.forEach((line) => {
-      // Guard page height limit
-      if (y > pageHeight - 75) {
-        docPdf.addPage();
-        y = 70;
-        drawHeader();
-      }
-
-      if (line.startsWith('TITLE: ')) {
-        const titleText = line.replace('TITLE: ', '');
-        docPdf.setFont('Helvetica', 'bold');
-        docPdf.setFontSize(20);
-        docPdf.setTextColor(43, 87, 154); // Blue color (#2b579a)
-        y += 12;
-
-        const splitText = docPdf.splitTextToSize(titleText, maxLineWidth);
-        docPdf.text(splitText, marginX, y);
-        y += splitText.length * 24 + 12;
-      } else if (line.startsWith('SUBTITLE: ')) {
-        const subText = line.replace('SUBTITLE: ', '');
-        docPdf.setFont('Helvetica', 'bold');
-        docPdf.setFontSize(14);
-        docPdf.setTextColor(71, 85, 105); // Slate-600
-        y += 8;
-
-        const splitText = docPdf.splitTextToSize(subText, maxLineWidth);
-        docPdf.text(splitText, marginX, y);
-        y += splitText.length * 18 + 10;
-      } else if (line.startsWith('LIST_ITEM: ')) {
-        const itemText = line.replace('LIST_ITEM: ', '');
-        docPdf.setFont('Helvetica', 'normal');
-        docPdf.setFontSize(10.5);
-        docPdf.setTextColor(51, 65, 85); // Slate-700
-        
-        // Custom elegant bullet drawing
-        docPdf.setFillColor(43, 87, 154);
-        docPdf.circle(marginX + 5, y - 3, 2, 'F');
-
-        const splitText = docPdf.splitTextToSize(itemText, maxLineWidth - 15);
-        docPdf.text(splitText, marginX + 15, y);
-        y += splitText.length * 15 + 6;
-      } else if (line.startsWith('QUOTE: ')) {
-        const quoteText = line.replace('QUOTE: ', '');
-        docPdf.setFont('Helvetica', 'italic');
-        docPdf.setFontSize(10.5);
-        docPdf.setTextColor(100, 116, 139); // Slate-500
-
-        // Subtle quote bar
-        docPdf.setFillColor(203, 213, 225); // slate-300
-        const splitText = docPdf.splitTextToSize(quoteText, maxLineWidth - 20);
-        docPdf.rect(marginX, y - 9, 3, splitText.length * 15, 'F');
-        docPdf.text(splitText, marginX + 15, y);
-        y += splitText.length * 15 + 10;
-      } else if (line.startsWith('TABLE: ')) {
-        const tableText = line.replace('TABLE: ', '');
-        docPdf.setFont('Courier', 'bold');
-        docPdf.setFontSize(9);
-        docPdf.setTextColor(30, 41, 59); // Slate-800
-        y += 4;
-
-        const splitText = docPdf.splitTextToSize(tableText, maxLineWidth);
-        docPdf.text(splitText, marginX, y);
-        y += splitText.length * 13 + 8;
-      } else {
-        // Standard normal text paragraph
-        docPdf.setFont('Helvetica', 'normal');
-        docPdf.setFontSize(10.5);
-        docPdf.setTextColor(51, 65, 85); // Slate-700
-
-        const splitText = docPdf.splitTextToSize(line, maxLineWidth);
-        docPdf.text(splitText, marginX, y);
-        y += splitText.length * 15 + 8;
-      }
-    });
-
-    // Compute and draw total page numbers dynamically at the end using public method API
-    const totalPages = docPdf.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      docPdf.setPage(i);
-      docPdf.setFont('Helvetica', 'normal');
-      docPdf.setFontSize(8);
-      docPdf.setTextColor(148, 163, 184); // Slate-400
-      
-      // Footer text line
-      docPdf.text(`Page ${i} sur ${totalPages}`, pageWidth - marginX - 65, pageHeight - 25);
-      docPdf.text("Rapport généré par ManixGPT Office", marginX, pageHeight - 25);
-    }
-
-    const cleanName = title.trim().replace(/\.docx$/i, '').replace(/\.pdf$/i, '') + '.pdf';
+    // Save final high-fidelity PDF
     docPdf.save(cleanName);
 
-    // Show temporary visual feedback
-    const toast = document.createElement('div');
-    toast.textContent = `Document PDF exporté avec succès : ${cleanName}`;
-    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#f8fafc;padding:10px 20px;border-radius:9999px;font-size:12px;font-weight:600;box-shadow:0 10px 25px rgba(0,0,0,0.3);z-index:99999;transition:opacity 0.3s;';
-    document.body.appendChild(toast);
+    // Update toast to success
+    toast.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <svg style="width:16px;height:16px;color:#10b981;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        <span>Document PDF haute fidélité exporté avec succès (${cleanName})</span>
+      </div>
+    `;
+    toast.style.background = '#065f46';
     setTimeout(() => {
       toast.style.opacity = '0';
-      setTimeout(() => toast.remove(), 300);
-    }, 2500);
+      setTimeout(() => toast.remove(), 400);
+    }, 3000);
   } catch (err: any) {
-    console.error("PDF Export error:", err);
-    alert('Erreur lors du téléchargement PDF : ' + err.message);
+    console.error('PDF Export error:', err);
+    toast.innerHTML = `<span>Erreur lors de l'exportation PDF : ${err.message || 'Échec'}</span>`;
+    toast.style.background = '#991b1b';
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 400);
+    }, 4000);
   }
 }

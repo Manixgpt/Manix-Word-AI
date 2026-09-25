@@ -108,6 +108,8 @@ interface WordRibbonProps {
   onOpenRagSearch?: () => void;
   onOpenAutonomousAgent?: () => void;
   onOpenDocumentStructure?: () => void;
+  isAiAssistantOpen?: boolean;
+  onToggleAiAssistant?: () => void;
 }
 
 export default function WordRibbon({
@@ -147,6 +149,8 @@ export default function WordRibbon({
   onOpenRagSearch,
   onOpenAutonomousAgent,
   onOpenDocumentStructure,
+  isAiAssistantOpen = true,
+  onToggleAiAssistant,
 }: WordRibbonProps) {
   const tabs: RibbonTab[] = [
     'Accueil',
@@ -327,6 +331,25 @@ export default function WordRibbon({
                   : grammarIssuesCount > 0
                   ? `${grammarIssuesCount} faute${grammarIssuesCount > 1 ? 's' : ''}`
                   : 'Grammaire OK'}
+              </span>
+            </button>
+          )}
+
+          {/* ManixGPT Sidebar Toggle Button */}
+          {onToggleAiAssistant && (
+            <button
+              id="btn-quick-toggle-ai"
+              onClick={onToggleAiAssistant}
+              className={`flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-semibold rounded border transition cursor-pointer ${
+                isAiAssistantOpen
+                  ? isDarkMode ? 'bg-blue-900/60 text-blue-200 border-blue-700 hover:bg-blue-800/60' : 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700 shadow-xs'
+                  : isDarkMode ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100 shadow-xs'
+              }`}
+              title={isAiAssistantOpen ? "Masquer le volet ManixGPT (Ctrl+J)" : "Afficher le volet ManixGPT (Ctrl+J)"}
+            >
+              <Sparkles className={`h-3.5 w-3.5 ${isAiAssistantOpen ? 'text-amber-300' : 'text-blue-600'}`} />
+              <span className="text-[11px]">
+                {isAiAssistantOpen ? 'Masquer ManixGPT' : 'ManixGPT'}
               </span>
             </button>
           )}

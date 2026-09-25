@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, CheckCircle, FilePlus, Copy, ArrowRight, Loader, FileText, ExternalLink, Globe, Check, BookOpen, Brain, Layout, FileEdit, CheckCheck, Send, PanelRight, PanelLeft, Maximize2, Minimize2, History, RotateCcw, Trash2 } from 'lucide-react';
+import { Sparkles, CheckCircle, FilePlus, Copy, ArrowRight, Loader, FileText, ExternalLink, Globe, Check, BookOpen, Brain, Layout, FileEdit, CheckCheck, Send, PanelRight, PanelLeft, Maximize2, Minimize2, History, RotateCcw, Trash2, X, EyeOff } from 'lucide-react';
 import { SearchResultItem } from '../types';
 
 export interface AiHistoryItem {
@@ -20,6 +20,7 @@ interface AiAssistantProps {
   panelMode?: 'right' | 'left' | 'floating';
   onChangePanelMode?: (mode: 'right' | 'left' | 'floating') => void;
   accentColor?: string;
+  onClose?: () => void;
 }
 
 export default function AiAssistant({
@@ -32,6 +33,7 @@ export default function AiAssistant({
   panelMode = 'right',
   onChangePanelMode,
   accentColor = '#1d4ed8',
+  onClose,
 }: AiAssistantProps) {
   // Active Sidebar Sub-Tab: 'outils' | 'historique'
   const [sidebarTab, setSidebarTab] = useState<'outils' | 'historique'>('outils');
@@ -391,41 +393,54 @@ export default function AiAssistant({
           </div>
         </div>
 
-        {/* Panel Dock Position Controls */}
-        <div className="flex items-center space-x-1 bg-slate-200/60 dark:bg-slate-800/60 p-1 rounded-xl">
-          <button
-            onClick={() => onChangePanelMode && onChangePanelMode('left')}
-            className={`p-1 rounded-lg transition cursor-pointer ${
-              panelMode === 'left'
-                ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
-                : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-            }`}
-            title="Ancrer à gauche"
-          >
-            <PanelLeft className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => onChangePanelMode && onChangePanelMode('right')}
-            className={`p-1 rounded-lg transition cursor-pointer ${
-              panelMode === 'right'
-                ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
-                : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-            }`}
-            title="Ancrer à droite"
-          >
-            <PanelRight className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => onChangePanelMode && onChangePanelMode('floating')}
-            className={`p-1 rounded-lg transition cursor-pointer ${
-              panelMode === 'floating'
-                ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
-                : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-            }`}
-            title="Fenêtre flottante détachée"
-          >
-            <Maximize2 className="w-3.5 h-3.5" />
-          </button>
+        {/* Panel Dock Position & Hide Controls */}
+        <div className="flex items-center space-x-1.5">
+          <div className="flex items-center space-x-0.5 bg-slate-200/60 dark:bg-slate-800/60 p-0.5 rounded-xl">
+            <button
+              onClick={() => onChangePanelMode && onChangePanelMode('left')}
+              className={`p-1 rounded-lg transition cursor-pointer ${
+                panelMode === 'left'
+                  ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+              }`}
+              title="Ancrer à gauche"
+            >
+              <PanelLeft className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => onChangePanelMode && onChangePanelMode('right')}
+              className={`p-1 rounded-lg transition cursor-pointer ${
+                panelMode === 'right'
+                  ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+              }`}
+              title="Ancrer à droite"
+            >
+              <PanelRight className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => onChangePanelMode && onChangePanelMode('floating')}
+              className={`p-1 rounded-lg transition cursor-pointer ${
+                panelMode === 'floating'
+                  ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+              }`}
+              title="Fenêtre flottante détachée"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Dedicated Hide / Close Button */}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer border border-transparent hover:border-rose-200 dark:hover:border-rose-900"
+              title="Masquer le panneau ManixGPT (Raccourci: Ctrl+J)"
+            >
+              <EyeOff className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
